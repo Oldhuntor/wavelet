@@ -1,0 +1,70 @@
+# 操作系统生成的文件
+##################################
+.DS_Store
+Thumbs.db
+
+# IDE/编辑器特定文件
+##################################
+# 忽略 IntelliJ/PyCharm (.idea) 文件夹
+.idea/
+
+# Python 特定的文件
+##################################
+# 字节码文件
+*.pyc
+__pycache__/
+
+# 操作系统/平台特定的编译文件（例如 Cython）
+*.so
+*.pyd
+
+# setup.py 生成的文件
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# 虚拟环境目录
+venv/
+env/
+
+# 测试/覆盖率文件
+.coverage
+.tox/
+htmlcov/
+.pytest_cache/
+
+# Jupyter Notebook/IPython 文件
+.ipynb_checkpoints
+
+# 文档生成（例如 Sphinx）
+docs/_build/
+
+# 日志/临时文件
+*.log
+*.tmp
+temp/
+
+# 用户要求添加的文件
+##################################
+# 忽略 ARFF (Attribute-Relation File Format) 文件
+*.arff
+
+# 忽略 TypeScript 源文件
+*.ts
+
+# 额外的 Python 缓存文件（例如 pip-compile）
+*.json.lock
+
+
+*.wav
+
+*.hea
+
+*.mat
+
+*.zip
+
+*.txt
+
+*.pdf
