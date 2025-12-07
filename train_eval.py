@@ -298,8 +298,8 @@ LR = 0.001
 
 
 if __name__ == '__main__':
-    from model.wavelet_feature_extractor import TimeSeriesMLP
-    from model.cwt_matrix import generate_adaptive_scales
+    from model.baseline import TimeSeriesMLP
+    from model.CWT import generate_adaptive_scales
 
 
     #

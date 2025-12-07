@@ -176,7 +176,7 @@ def create_dataloader_from_npz(
 if __name__ == '__main__':
     # 假设你已经定义了 MyRawDataset 和相关的参数
     from utils.ts_convertor import create_dataloader_from_arff
-    from model.cwt_matrix import generate_adaptive_scales
+    from model.CWT import generate_adaptive_scales
 
 
     DATA_PATH = '/Users/hxh/PycharmProjects/final_thesis/Dataset/'

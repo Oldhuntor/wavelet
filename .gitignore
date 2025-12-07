@@ -72,3 +72,6 @@ temp/
 *.npz
 
 .neptune
+
+.meetings
+
