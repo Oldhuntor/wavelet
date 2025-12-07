@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ts_convertor import create_dataloader_from_arff
 
 class TimeSeriesMLP(nn.Module):
     """

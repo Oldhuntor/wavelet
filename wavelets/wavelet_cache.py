@@ -8,7 +8,6 @@ from torch.utils.data import DataLoader, TensorDataset
 from typing import Optional, Tuple
 
 
-
 def extract_cwt_features(x_single, scales, fs, trim_ratio):
     # ... (保持不变，用于单样本 CWT 计算)
     time_length = x_single.shape[0]
@@ -176,7 +175,7 @@ def create_dataloader_from_npz(
 # --- 示例：在主文件或预处理文件中调用 ---
 if __name__ == '__main__':
     # 假设你已经定义了 MyRawDataset 和相关的参数
-    from ts_convertor import create_dataloader_from_arff
+    from utils.ts_convertor import create_dataloader_from_arff
     from model.cwt_matrix import generate_adaptive_scales
 
 

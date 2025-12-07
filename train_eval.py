@@ -1,13 +1,10 @@
-from sympy.logic.boolalg import Boolean
-
-from ts_convertor import create_dataloader_from_arff
+from utils.ts_convertor import create_dataloader_from_arff
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from typing import Type, Dict, Any, Callable
 from loss.QMF import QMFLoss
 from wavelets.wavelet_cache import create_dataloader_from_npz
-import numpy as np
 import neptune
 import os
 
@@ -301,9 +298,7 @@ LR = 0.001
 
 
 if __name__ == '__main__':
-    from model.wavelet_feature_extractor import DWT_MLP, TimeSeriesMLP
-    from model.learnable_wavelet import LWT
-    from model.cwt_matrix import WaveletMultiHeadClassifier
+    from model.wavelet_feature_extractor import TimeSeriesMLP
     from model.cwt_matrix import generate_adaptive_scales
 
 
