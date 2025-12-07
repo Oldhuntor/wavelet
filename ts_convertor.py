@@ -10,7 +10,7 @@ def create_dataloader_from_arff(
         arff_file_path: str,
         batch_size: int = 64,
         shuffle: bool = True,
-        num_workers: int = 4,
+        num_workers: int = 0,
         mean: Optional[float] = None,
         std: Optional[float] = None
 ) -> Tuple[DataLoader, Optional[float], Optional[float]]:

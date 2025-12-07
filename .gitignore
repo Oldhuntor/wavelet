@@ -68,3 +68,7 @@ temp/
 *.txt
 
 *.pdf
+
+*.npz
+
+.neptune
