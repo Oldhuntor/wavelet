@@ -78,3 +78,6 @@ temp/
 *.pt
 
 *.png
+
+*.pth
+
