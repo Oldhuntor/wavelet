@@ -75,3 +75,6 @@ temp/
 
 .meetings
 
+*.pt
+
+*.png
