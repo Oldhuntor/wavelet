@@ -32,9 +32,9 @@ def cache_cwt_data_from_dataloader(raw_dataloader: DataLoader, scales, fs, trim_
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    if os.path.exists(output_file):
-        print(f"✅ 缓存文件已存在: {output_file}。跳过计算。")
-        return
+    # if os.path.exists(output_file):
+    #     print(f"✅ 缓存文件已存在: {output_file}。跳过计算。")
+    #     return
 
     print("--- 步骤 1: 迭代 DataLoader 获取所有原始数据和标签 ---")
     all_raw_data = []
@@ -87,6 +87,7 @@ def cache_cwt_data_from_dataloader(raw_dataloader: DataLoader, scales, fs, trim_
     X_processed = np.stack(processed_features, axis=0)
     print(f"X_processed shape: {X_processed.shape}")
     Y_processed = np.array(all_labels)
+    print(f"Y_processed shape: {Y_processed.shape}")
 
     np.savez(output_file, X=X_processed, Y=Y_processed)
     print(f"\n🎉 特征和标签已成功缓存到 {output_file}。")
@@ -180,7 +181,7 @@ if __name__ == '__main__':
 
 
     DATA_PATH = '/Users/hxh/PycharmProjects/final_thesis/Dataset/'
-    DATA_NAME = 'AbnormalHeartbeat'
+    DATA_NAME = 'Computers'
 
 
     TRAIN_FILE = f'{DATA_NAME}/{DATA_NAME}_TRAIN.arff'
@@ -190,7 +191,7 @@ if __name__ == '__main__':
     test_path = DATA_PATH + TEST_FILE
 
 
-    train_loader, mean, std = create_dataloader_from_npz('/Users/hxh/PycharmProjects/final_thesis/Dataset/AbnormalHeartbeat/AbnormalHeartbeat_TEST.npz')
+    # train_loader, mean, std = create_dataloader_from_npz('/Users/hxh/PycharmProjects/final_thesis/Dataset/Computers/Computers_TEST.npz')
 
 
     train_dataloader, train_mean, train_std = create_dataloader_from_arff(

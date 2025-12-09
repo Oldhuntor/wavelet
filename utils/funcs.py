@@ -6,7 +6,8 @@ from functools import partial
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from typing import Optional, Tuple
-
+from utils.constant import *
+from utils.objects import MorletDataset
 
 def extract_cwt_features(x_single, scales, fs, trim_ratio):
     # ... (保持不变，用于单样本 CWT 计算)
@@ -51,5 +52,33 @@ def generate_adaptive_scales(L, num_scales=5):
     # 确保是整数类型 (虽然pywt接受浮点数，但整数更直观)
     # 也可以保持浮点数以获得精确的对数间隔
     return scales.astype(np.float32)
+
+
+def load_morlet_pt(path):
+    data = torch.load(path)
+    amp = data["amplitude"].numpy()
+    pha = data["phase"].numpy()
+    y = data["labels"].numpy()
+    return amp, pha, y
+
+
+def get_data_path(data_path:str, data_name:str, data_type:str):
+    train_name = data_path + f'{data_name}/{data_name}_TRAIN.{data_type}'
+    test_name = data_path + f'{data_name}/{data_name}_TEST.{data_type}'
+    return train_name, test_name
+
+def get_save_path(data_path, data_name:str, object_name):
+    path = data_path + f'{data_name}/{object_name}'
+    return path
+
+
+def load_mortlet_pt_dataloader(data_name):
+    TRAIN_FILE, TEST_FILE = get_data_path(DATA_PATH, data_name, 'pt')
+    amp_train, pha_train, y_train = load_morlet_pt(TRAIN_FILE)
+    amp_test, pha_test, y_test = load_morlet_pt(TEST_FILE)
+    # ---------- Build Dataset & DataLoader ----------
+    train_ds = MorletDataset(amp_train, pha_train, y_train)
+    test_ds = MorletDataset(amp_test, pha_test, y_test)
+    return train_ds, test_ds
 
 

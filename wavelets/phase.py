@@ -39,7 +39,7 @@ x = np.concatenate([segment1, segment2, segment3])
 # 连续小波变换 (Morlet)
 # -----------------------------
 scales = np.arange(1, 128)
-coefficients, frequencies = pywt.cwt(x, scales, 'cmor1.5-1.0', sampling_period=1/1000000)
+coefficients, frequencies = pywt.Wavelet(x, 'db')
 
 amplitude = np.abs(coefficients)
 phase = np.angle(coefficients)

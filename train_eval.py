@@ -1,3 +1,5 @@
+from torch.utils.data import DataLoader
+
 from utils.ts_convertor import create_dataloader_from_arff
 import torch
 import torch.nn as nn
@@ -7,6 +9,79 @@ from loss.QMF import QMFLoss
 from wavelets.wavelet_cache import create_dataloader_from_npz
 import neptune
 import os
+from utils import get_data_path
+from utils import DATA_PATH
+
+DATA_NAME = 'ECG5000'
+
+DATA_TYPE = 'arff'  # pt, npz or arff
+
+TRAIN_FILE, TEST_FILE = get_data_path(DATA_PATH, DATA_NAME, DATA_TYPE)
+
+
+# 根据您的参数设置:
+C = 1         # 通道数
+L = 140       # 序列长度
+K = 5        # 类别数 (请注意，如果 ECG5000 实际上是 5 个类别，K 应该设置为 5)
+
+# 模型和训练参数
+INPUT_DIM = C * L # 140
+NUM_C = K
+EPOCHS = 50
+LR = 0.001
+
+
+def train_epoch_DUAL(model, dataloader, criterion, optimizer, device):
+    """在一个 epoch 上执行训练"""
+    model.train()
+    running_loss = 0.0
+    correct_predictions = 0
+    total_samples = 0
+    count = 0
+    for amp, pha, labels in dataloader:
+        # print(count)
+        count = count + 1
+
+        optimizer.zero_grad()
+        outputs = model(amp, pha)
+        loss = criterion(outputs, labels)
+
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item() * amp.size(0)
+        _, predicted = torch.max(outputs.data, 1)
+        total_samples += labels.size(0)
+        correct_predictions += (predicted == labels).sum().item()
+        # print(f"total samples: {total_samples}, correct predictions: {correct_predictions}, loss: {running_loss}")
+
+    epoch_loss = running_loss / total_samples
+    epoch_acc = correct_predictions / total_samples
+    return epoch_loss, epoch_acc
+
+def evaluate_model_DUAL(model, dataloader, criterion, device):
+    model.eval()
+    running_loss = 0.0
+    correct_predictions = 0
+    total_samples = 0
+    count = 0
+    with torch.no_grad():
+
+        for amp, pha, labels in dataloader:
+            # print(count)
+            count += 1
+            outputs = model(amp, pha)
+            loss = criterion(outputs, labels)
+
+            running_loss += loss.item() * amp.size(0)
+            _, predicted = torch.max(outputs.data, 1)
+            total_samples += labels.size(0)
+            correct_predictions += (predicted == labels).sum().item()
+            # print(f"total samples: {total_samples}, correct predictions: {correct_predictions}, loss: {running_loss}")
+
+    epoch_loss = running_loss / total_samples
+    epoch_acc = correct_predictions / total_samples
+    return epoch_loss, epoch_acc
 
 def train_epoch(model, dataloader, criterion, optimizer, device):
     """在一个 epoch 上执行训练"""
@@ -128,7 +203,7 @@ def main_train_and_test_generic(
     trainer: Callable,
     evaluator: Callable,
     run: neptune.Run,
-    custom_dataloader:bool,
+    custom_dataloader: tuple,
     num_epochs: int = 50,
     batch_size: int = 128,
     learning_rate: float = 0.001
@@ -146,23 +221,8 @@ def main_train_and_test_generic(
 
     # 2. 数据加载和标准化 (假设 create_dataloader_from_arff 已在外部定义)
     # 训练集：计算并返回标准化参数
-
-    if custom_dataloader:
-        train_dataloader, train_mean, train_std = create_dataloader_from_npz(
-            npz_file_path=train_path,
-            batch_size=batch_size,
-            shuffle=True,
-        )
-
-        test_dataloader, _, _ = create_dataloader_from_npz(
-            npz_file_path=test_path,
-            batch_size=batch_size,
-            shuffle=False,
-            mean=train_mean,
-            std=train_std
-        )
-
-    else:
+    train_mean, train_std = None, None
+    if not custom_dataloader:
         train_dataloader, train_mean, train_std = create_dataloader_from_arff(
             arff_file_path=train_path,
             batch_size=batch_size,
@@ -176,6 +236,8 @@ def main_train_and_test_generic(
             mean=train_mean,
             std=train_std
         )
+    else:
+        train_dataloader, test_dataloader = custom_dataloader
 
     # 记录数据
 
@@ -192,23 +254,38 @@ def main_train_and_test_generic(
     # ⭐ 2. 记录数据形状
     # -------------------------
     # 获取 train 数据形状
-    train_batch, train_label = next(iter(train_dataloader))
-    run["data/train/input_shape"] = str(train_batch.shape)
-    run["data/train/label_shape"] = str(train_label.shape)
+    if model_class == DualFeatureMRAClassifier:
+        feature1, feature2, train_label = next(iter(train_dataloader))
+        run["data/train/input_shape"] = str(feature1.shape)
+        run["data/train/label_shape"] = str(train_label.shape)
 
-    # 获取 test 数据形状
-    test_batch, test_label = next(iter(test_dataloader))
-    run["data/test/input_shape"] = str(test_batch.shape)
-    run["data/test/label_shape"] = str(test_label.shape)
-    train_count = len(train_dataloader.dataset)
-    test_count = len(test_dataloader.dataset)
-    run["data/train/count"] = train_count
-    run["data/test/count"] = test_count
+        feature1, feature2, test_label = next(iter(test_dataloader))
+        run["data/test/input_shape"] = str(feature1.shape)
+        run["data/test/label_shape"] = str(test_label.shape)
+        train_count = len(train_dataloader.dataset)
+        test_count = len(test_dataloader.dataset)
+        run["data/train/count"] = train_count
+        run["data/test/count"] = test_count
+
+    else:
+        train_batch, train_label = next(iter(train_dataloader))
+        run["data/train/input_shape"] = str(train_batch.shape)
+        run["data/train/label_shape"] = str(train_label.shape)
+
+        # 获取 test 数据形状
+        test_batch, test_label = next(iter(test_dataloader))
+        run["data/test/input_shape"] = str(test_batch.shape)
+        run["data/test/label_shape"] = str(test_label.shape)
+        train_count = len(train_dataloader.dataset)
+        test_count = len(test_dataloader.dataset)
+        run["data/train/count"] = train_count
+        run["data/test/count"] = test_count
     # -------------------------
     # ⭐ 3. 记录标准化参数
     # -------------------------
-    run["data/train/mean"] = train_mean
-    run["data/train/std"] = train_std
+    if train_mean or train_std:
+        run["data/train/mean"] = train_mean
+        run["data/train/std"] = train_std
 
     # 3. 初始化模型、损失函数和优化器
     # 使用传入的模型类和参数字典进行初始化
@@ -255,67 +332,29 @@ def main_train_and_test_generic(
     return model
 
 
-DATA_PATH = '/Users/hxh/PycharmProjects/final_thesis/Dataset/'
-
-# 您的路径示例 (请替换为您的实际路径):
-# TRAIN_FILE = DATA_PATH +  'StarLightCurves/StarLightCurves_TRAIN.arff'
-# TEST_FILE = DATA_PATH + 'StarLightCurves/StarLightCurves_TEST.arff'
-
-# TRAIN_FILE = DATA_PATH +  'Earthquakes/Earthquakes_TRAIN.ts'
-# TEST_FILE = DATA_PATH + 'Earthquakes/Earthquakes_TEST.ts'
-
-# TRAIN_FILE = DATA_PATH +  'BinaryHeartbeat/BinaryHeartbeat_TRAIN.arff'
-# TEST_FILE = DATA_PATH + 'BinaryHeartbeat/BinaryHeartbeat_TEST.arff'
-
-# TRAIN_FILE = DATA_PATH +  'WormsTwoClass/WormsTwoClass_TRAIN.arff'
-# TEST_FILE = DATA_PATH + 'WormsTwoClass/WormsTwoClass_TEST.arff'
-
-# TRAIN_FILE = DATA_PATH +  'PowerCons/PowerCons_TRAIN.arff'
-# TEST_FILE = DATA_PATH + 'PowerCons/PowerCons_TEST.arff'
-
-# TRAIN_FILE = DATA_PATH +  'Computers/Computers_TRAIN.arff'
-# TEST_FILE = DATA_PATH + 'Computers/Computers_TEST.arff'
-
-DATA_NAME = 'AbnormalHeartbeat'
-
-DATA_TYPE = 'npz'  # npz or arff
-
-TRAIN_FILE = DATA_PATH +  f'{DATA_NAME}/{DATA_NAME}_TRAIN.{DATA_TYPE}'
-TEST_FILE = DATA_PATH + f'{DATA_NAME}/{DATA_NAME}_TEST.{DATA_TYPE}'
-
-
-
-# 根据您的参数设置:
-C = 1         # 通道数
-L = 18530       # 序列长度
-K = 2        # 类别数 (请注意，如果 ECG5000 实际上是 5 个类别，K 应该设置为 5)
-
-# 模型和训练参数
-INPUT_DIM = C * L # 140
-NUM_C = K
-EPOCHS = 50
-LR = 0.001
-
 
 if __name__ == '__main__':
     from model.baseline import TimeSeriesMLP
     from model.CWT import generate_adaptive_scales
+    from model.DWT import DWT_MLP
+    from model.learnable_wavelet import LWT
+    from model.MRA import MorletDataset, load_morlet_pt, DualFeatureMRAClassifier
+    from utils import load_mortlet_pt_dataloader
 
-
-    #
     os.environ["NEPTUNE_LOGGER_LEVEL"] = "DEBUG"
 
     run = neptune.init_run(
         project="casestudy",
         api_token=os.getenv("NEPTUNE_API_TOKEN"),
-        mode="debug"
+        # mode="debug"
     )
 
+    train_ds, test_ds = load_mortlet_pt_dataloader(DATA_NAME)
+    train_loader = DataLoader(train_ds, batch_size=32, shuffle=True)
+    test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 
     scales = generate_adaptive_scales(L)
-    # scales = np.arange(10, 128)
     fs = 1
-
 
     WMHC_params = {
         'scales' : scales,
@@ -334,50 +373,87 @@ if __name__ == '__main__':
     }
 
     MLP_params = {
-        'input_dim' : 148240, # 148240,18530
-        'hidden_size' : 512,
+        'input_dim' : L, # 148240,18530
+        'hidden_size' : 1024,
         'num_classes' : NUM_C,
     }
 
-    # final_model = main_train_and_test_generic(
-    #     model_class=DWT_MLP,
-    #     model_params=DWT_params,
-    #     train_path=TRAIN_FILE,
-    #     test_path=TEST_FILE,
-    #     trainer=train_epoch,
-    #     custom_dataloader=False,
-    #     evaluator=evaluate_model,
-    #     num_epochs=EPOCHS,
-    #     learning_rate=LR,
-    #     batch_size=32,
-    # )
-    #
+
+    LWT_params = {
+        'input_length' : L,
+        'levels' : 3,
+        'hidden_dim': 64,
+        'output_dim' : NUM_C
+    }
+
+
+    MRA_params = {
+        "num_classes": NUM_C,
+    }
+
+
+    DUAL_MLP_params = {
+        'input_dim_per_feature' : INPUT_DIM,
+        'num_classes' : NUM_C,
+        'hidden_size' : 512
+    }
+
     final_model = main_train_and_test_generic(
-        model_class=TimeSeriesMLP,
-        model_params=MLP_params,
+        model_class=DWT_MLP,
+        model_params=DWT_params,
         train_path=TRAIN_FILE,
         test_path=TEST_FILE,
         trainer=train_epoch,
+        custom_dataloader=(),
         evaluator=evaluate_model,
-        custom_dataloader=True,
         num_epochs=EPOCHS,
         learning_rate=LR,
         batch_size=32,
         run=run,
     )
 
+    # final_model = main_train_and_test_generic(
+    #     model_class=LWT,
+    #     model_params=LWT_params,
+    #     train_path=TRAIN_FILE,
+    #     test_path=TEST_FILE,
+    #     trainer=train_epoch_LWT,
+    #     custom_dataloader=(),
+    #     evaluator=evaluate_model_LWT,
+    #     num_epochs=EPOCHS,
+    #     learning_rate=LR,
+    #     batch_size=32,
+    #     run=run,
+    # )
+
 
     # final_model = main_train_and_test_generic(
-    #     model_class=WaveletMultiHeadClassifier,
-    #     model_params=WMHC_params,
+    #     model_class=TimeSeriesMLP,
+    #     model_params=MLP_params,
     #     train_path=TRAIN_FILE,
     #     test_path=TEST_FILE,
     #     trainer=train_epoch,
     #     evaluator=evaluate_model,
-    #     custom_dataloader=True,
+    #     custom_dataloader=(),
     #     num_epochs=EPOCHS,
     #     learning_rate=LR,
     #     batch_size=32,
-    #
+    #     run=run,
+    # )
+
+
+    # final_model = main_train_and_test_generic(
+    #     model_class=DualFeatureMRAClassifier,
+    #     model_params=MRA_params,
+    #     train_path=TRAIN_FILE,
+    #     test_path=TEST_FILE,
+    #     trainer=train_epoch_DUAL,
+    #     evaluator=evaluate_model_DUAL,
+    #     custom_dataloader=(train_loader, test_loader),
+    #     num_epochs=EPOCHS,
+    #     learning_rate=LR,
+    #     batch_size=32,
+    #     run=run,
+    # )
 
     run.stop()
