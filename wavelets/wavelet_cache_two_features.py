@@ -88,7 +88,8 @@ def cache_morlet_coefficients(path:str, train_mean=None, train_std=None):
     phase_array = np.empty((num_samples, NUM_SCALES, sequence_length - cut * 2), dtype=np.float32)
 
 
-    NUM_WORKERS = mp.cpu_count()  # 使用所有核心
+    # NUM_WORKERS = mp.cpu_count() - 4 # 使用所有核心
+    NUM_WORKERS = 10
     print(f"开始使用 {NUM_WORKERS} 个进程并行计算 CWT 特征...")
 
 
@@ -116,7 +117,7 @@ def cache_morlet_coefficients(path:str, train_mean=None, train_std=None):
 
 if __name__ == '__main__':
 
-    data_name = DATA_NAMES[-1]
+    data_name = DATA_NAMES[4]
     print(data_name)
     data_type = 'arff'
     train_path,test_path = get_data_path(DATA_PATH, data_name, data_type)
