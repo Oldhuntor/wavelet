@@ -12,9 +12,26 @@ import os
 from utils import get_data_path
 from utils import DATA_PATH, DUAL_FEATURES_MODELS, DATA_NAMES, DATA_INFO
 
-DATA_NAME = DATA_NAMES[1]
-MARGIN = 0.1
-FLAG = 0
+DATA_NAME = DATA_NAMES[11]
+MARGIN = 0.5
+DATA_TYPE = 'arff'  # pt, npz or arff
+
+TRAIN_FILE, TEST_FILE = get_data_path(DATA_PATH, DATA_NAME, DATA_TYPE)
+
+# 根据您的参数设置:
+C = 1  # 通道数
+L = DATA_INFO[DATA_NAME]['SEQUENCE_LENGTH']  # 序列长度
+K = DATA_INFO[DATA_NAME]['NUM_CLASSES']  # 类别数 (请注意，如果 ECG5000 实际上是 5 个类别，K 应该设置为 5)
+
+# 模型和训练参数
+INPUT_DIM = C * L  # 140
+NUM_C = K
+EPOCHS = 2000
+# EPOCHS = 100
+
+LR = 0.001
+
+
 def check_specific_module(model, module_name="classifier"):
     """检查特定模块的参数状态"""
     print(f"\n{'=' * 70}")
@@ -50,8 +67,7 @@ def check_specific_module(model, module_name="classifier"):
     else:
         print(f"  ⚠ MIXED: Some frozen, some trainable")
 
-
-def create_optimizers_for_adaptive_filters(model, lr_wavelet=0.001, lr_classifier=0.0001):
+def create_optimizers_for_adaptive_filters(model, lr_wavelet=0.01, lr_classifier=0.0001):
     """为你的使用场景创建优化器
 
     Stage 1 (reconstruction_loss >= MARGIN):
@@ -68,7 +84,7 @@ def create_optimizers_for_adaptive_filters(model, lr_wavelet=0.001, lr_classifie
     # Optimizer 1: 只包含两个filters
     wavelet_params = [
         model.wavelet.low_pass,
-        model.wavelet.high_pass
+        # model.wavelet.high_pass
     ]
     optimizer_wavelet = torch.optim.Adam(wavelet_params, lr=lr_wavelet)
 
@@ -89,7 +105,7 @@ def create_optimizers_for_adaptive_filters(model, lr_wavelet=0.001, lr_classifie
     print("=" * 70)
     print(f"optimizer_wavelet (只在Stage 1使用):")
     print(f"  - low_pass filter (shape={tuple(model.wavelet.low_pass.shape)})")
-    print(f"  - high_pass filter (shape={tuple(model.wavelet.high_pass.shape)})")
+    # print(f"  - high_pass filter (shape={tuple(model.wavelet.high_pass.shape)})")
     print(f"  总共 {sum(p.numel() for p in wavelet_params):,} 参数")
 
     classifier_param_count = sum(p.numel() for p in model.classifier.parameters())
@@ -156,7 +172,6 @@ def train_epoch_ad(model, dataloader, criterion, optimizer_wavelet,
     print(f"  Stage 1 batches: {stage1_batches}, Stage 2 batches: {stage2_batches}")
 
     return epoch_loss, epoch_acc, reconstruction_loss
-
 
 def evaluate_model_ad(model, dataloader, criterion, device):
     """测试函数"""
@@ -293,6 +308,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device):
     count = 0
     for inputs, labels in dataloader:
         # print(count)
+        labels.squeeze_()
         count = count + 1
         inputs, labels = inputs.to(device), labels.to(device)
 
@@ -407,8 +423,9 @@ def main_train_and_test_generic(
     custom_dataloader: tuple = (),
     num_epochs: int = 50,
     batch_size: int = 128,
-    learning_rate: float = 0.001
-) -> nn.Module:
+    learning_rate: float = 0.001,
+    verbose: bool = False,
+):
     """
     通用主函数：加载数据、使用传入的模型类和参数初始化模型，并执行训练循环。
     """
@@ -504,9 +521,9 @@ def main_train_and_test_generic(
 
     best_test_acc = 0.0
 
-    if model_name == 'WaveletClassifier':
+    if model_name in ['WaveletClassifier','QMFWaveletClassifier']:
         optimizer_wavelet, optimizer_classifier = create_optimizers_for_adaptive_filters(
-            model, lr_wavelet=0.001, lr_classifier=0.0001
+            model, lr_wavelet=0.01, lr_classifier=0.0001
         )
         criterion = nn.CrossEntropyLoss()
         print(f"MARGIN = 0.1 (reconstruction_loss >= 0.1 时训练filters)\n")
@@ -522,9 +539,10 @@ def main_train_and_test_generic(
                                optimizer_classifier, device, stage_1_trained)
 
             test_loss, test_acc = evaluate_model_ad(model, test_dataloader, criterion, device)
-            print(f"Epoch {epoch + 1}/{num_epochs}:")
-            print(f"  Train Loss: {train_loss:.4f}, Train Acc: {train_acc * 100:.2f}%")
-            print(f"  Test Loss: {test_loss:.4f}, Test Acc: {test_acc * 100:.2f}%")
+            if verbose:
+                print(f"Epoch {epoch + 1}/{num_epochs}:")
+                print(f"  Train Loss: {train_loss:.4f}, Train Acc: {train_acc * 100:.2f}%")
+                print(f"  Test Loss: {test_loss:.4f}, Test Acc: {test_acc * 100:.2f}%")
 
             run["train/loss"].append(train_loss)
             run["train/acc"].append(train_acc)
@@ -537,7 +555,6 @@ def main_train_and_test_generic(
         print("\n--- 训练完成 ---")
         print(f"最终最佳测试集准确率: {best_test_acc * 100:.2f}%")
         return model
-
 
 
     criterion = nn.CrossEntropyLoss()
@@ -554,9 +571,10 @@ def main_train_and_test_generic(
         # 评估
         test_loss, test_acc = evaluator(model, test_dataloader, criterion, device)
 
-        print(f"Epoch {epoch + 1}/{num_epochs}:")
-        print(f"  Train Loss: {train_loss:.4f}, Train Acc: {train_acc * 100:.2f}%")
-        print(f"  Test Loss: {test_loss:.4f}, Test Acc: {test_acc * 100:.2f}%")
+        if verbose:
+            print(f"Epoch {epoch + 1}/{num_epochs}:")
+            print(f"  Train Loss: {train_loss:.4f}, Train Acc: {train_acc * 100:.2f}%")
+            print(f"  Test Loss: {test_loss:.4f}, Test Acc: {test_acc * 100:.2f}%")
 
         run["train/loss"].append(train_loss)
         run["train/acc"].append(train_acc)
@@ -569,9 +587,8 @@ def main_train_and_test_generic(
             # torch.save(model.state_dict(), f'best_{model_class.__name__}.pth')
 
     print("\n--- 训练完成 ---")
-    print(f"最终最佳测试集准确率: {best_test_acc * 100:.2f}%")
-    return model
-
+    print(f"model: {model_name}, best accuracy : {best_test_acc * 100:.2f}%")
+    return model, best_test_acc
 
 
 if __name__ == '__main__':
@@ -586,32 +603,15 @@ if __name__ == '__main__':
     from model.wavelet_cls import WaveletCNN
     from model.test import MRATimeSeriesClassifier
     from model.adaptive_filters import WaveletClassifier
-
-
-    DATA_TYPE = 'arff'  # pt, npz or arff
-
-    TRAIN_FILE, TEST_FILE = get_data_path(DATA_PATH, DATA_NAME, DATA_TYPE)
-
-    # 根据您的参数设置:
-    C = 1 # 通道数
-    L = DATA_INFO[DATA_NAME]['SEQUENCE_LENGTH']  # 序列长度
-    K = DATA_INFO[DATA_NAME]['NUM_CLASSES']  # 类别数 (请注意，如果 ECG5000 实际上是 5 个类别，K 应该设置为 5)
-
-    # 模型和训练参数
-    INPUT_DIM = C * L  # 140
-    NUM_C = K
-    EPOCHS =  200
-    # EPOCHS = 100
-
-    LR = 0.001
-
+    from model.qmf_wavelet import QMFWaveletClassifier
+    from model.multi_channel_DWT import MultiWaveletClassifier
 
     os.environ["NEPTUNE_LOGGER_LEVEL"] = "DEBUG"
 
     run = neptune.init_run(
         project="casestudy",
         api_token=os.getenv("NEPTUNE_API_TOKEN"),
-        mode="debug"
+        # mode="debug"
     )
 
     train_ds, test_ds = load_mortlet_pt_dataloader(DATA_NAME)
@@ -696,20 +696,60 @@ if __name__ == '__main__':
         'use_learnable_activation' : True
     }
 
+    test_params3 = {
+        'filter_length': 8,
+        'levels': 3,
+        'signal_length': L,
+        'num_classes': NUM_C,
+        'hidden_dim' : 64,
+        'num_wavelets': 4,
+        'init_type' : 'random',
+        # 'use_frequency_constraint' : True,
+        # 'use_learnable_activation' : True
+    }
 
-    final_model = main_train_and_test_generic(
-        model_class=WaveletClassifier,
-        model_params=test_params2,
+    final_model, _ = main_train_and_test_generic(
+        model_class=MultiWaveletClassifier,
+        model_params=test_params3,
         train_path=TRAIN_FILE,
         test_path=TEST_FILE,
-        trainer=train_epoch_ad,
+        trainer=train_epoch,
         custom_dataloader=(),
-        evaluator=evaluate_model_ad,
+        evaluator=evaluate_model,
         num_epochs=EPOCHS,
         learning_rate=LR,
         batch_size=32,
         run=run,
     )
+
+    # final_model = main_train_and_test_generic(
+    #     model_class=QMFWaveletClassifier,
+    #     model_params=test_params2,
+    #     train_path=TRAIN_FILE,
+    #     test_path=TEST_FILE,
+    #     trainer=train_epoch_ad,
+    #     custom_dataloader=(),
+    #     evaluator=evaluate_model_ad,
+    #     num_epochs=EPOCHS,
+    #     learning_rate=LR,
+    #     batch_size=32,
+    #     run=run,
+    # )
+
+
+    # final_model = main_train_and_test_generic(
+    #     model_class=WaveletClassifier,
+    #     model_params=test_params2,
+    #     train_path=TRAIN_FILE,
+    #     test_path=TEST_FILE,
+    #     trainer=train_epoch_ad,
+    #     custom_dataloader=(),
+    #     evaluator=evaluate_model_ad,
+    #     num_epochs=EPOCHS,
+    #     learning_rate=LR,
+    #     batch_size=32,
+    #     run=run,
+    # )
 
     # final_model = main_train_and_test_generic(
     #     model_class=MRATimeSeriesClassifier,

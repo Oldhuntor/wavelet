@@ -117,7 +117,7 @@ def cache_morlet_coefficients(path:str, train_mean=None, train_std=None):
 
 if __name__ == '__main__':
 
-    data_name = DATA_NAMES[4]
+    data_name = DATA_NAMES[11]
     print(data_name)
     data_type = 'arff'
     train_path,test_path = get_data_path(DATA_PATH, data_name, data_type)

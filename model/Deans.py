@@ -227,7 +227,7 @@ if __name__ == "__main__":
         input_dim=input_dim,
         ensemble_size=80,
         hidden_dims=[64, 32],
-        feature_bagging=True,
+        feature_bagging=False,
         bagging_ratio=0.3,
         power=3.0,
         device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),

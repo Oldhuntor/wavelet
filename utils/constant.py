@@ -3,7 +3,7 @@ DATA_PATH = '/Users/hxh/PycharmProjects/wavelet/wavelet/Dataset/'
 DATA_NAMES = ['AbnormalHeartbeat', 'Computers', 'Earthquakes',
               'ECG5000', 'PowerCons', 'StarLightCurves',
               'WormsTwoClass', 'ECG5000', 'EOGVerticalSignal',
-              'Wafer']
+              'Wafer','ProximalPhalanxOutlineCorrect','ECG200']
 
 DUAL_FEATURES_MODELS = ["DualFeatureMLP", "DualFeatureMRAClassifier"]
 
@@ -48,4 +48,12 @@ DATA_INFO = {
         'SEQUENCE_LENGTH': 152,
         'NUM_CLASSES': 2,
     },
+    DATA_NAMES[10]: {
+        'SEQUENCE_LENGTH': 80,
+        'NUM_CLASSES': 2,
+    },
+    DATA_NAMES[11]: {
+        'SEQUENCE_LENGTH': 96,
+        'NUM_CLASSES': 2,
+    }
 }
