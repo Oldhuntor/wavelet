@@ -97,31 +97,3 @@ def create_dataloader_from_arff(
 
     return dataloader, mean, std
 
-
-if __name__ == '__main__':
-
-    # --- 路径示例 ---
-    TRAIN_PATH = '/Users/hxh/PycharmProjects/final_thesis/Dataset/ECG/ECG5000/ECG5000_TRAIN.arff'
-    TEST_PATH = '/Users/hxh/PycharmProjects/final_thesis/Dataset/ECG/ECG5000/ECG5000_TEST.arff' # 假设有测试集文件
-
-    # 1. 处理训练集 (计算并返回 mean/std)
-    train_dataloader, train_mean, train_std = create_dataloader_from_arff(
-        arff_file_path=TRAIN_PATH,
-        batch_size=64,
-        shuffle=True
-    )
-
-    print(f"\n训练集 DataLoader 创建完成，Batch 数: {len(train_dataloader)}")
-    print(f"提取的训练集全局均值: {train_mean:.4f}, 标准差: {train_std:.4f}")
-
-    # 2. 处理测试集 (使用训练集的 mean/std)
-    test_dataloader, _, _ = create_dataloader_from_arff(
-        arff_file_path=TEST_PATH,
-        batch_size=64,
-        shuffle=False,  # 测试集不应打乱
-        mean=train_mean, # 使用训练集的参数
-        std=train_std    # 使用训练集的参数
-    )
-
-    print(f"\n测试集 DataLoader 创建完成，Batch 数: {len(test_dataloader)}")
-

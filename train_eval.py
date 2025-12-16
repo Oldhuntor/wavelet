@@ -12,7 +12,7 @@ import os
 from utils import get_data_path
 from utils import DATA_PATH, DUAL_FEATURES_MODELS, DATA_NAMES, DATA_INFO
 
-DATA_NAME = DATA_NAMES[11]
+DATA_NAME = DATA_NAMES[2]
 MARGIN = 0.5
 DATA_TYPE = 'arff'  # pt, npz or arff
 
@@ -26,7 +26,7 @@ K = DATA_INFO[DATA_NAME]['NUM_CLASSES']  # 类别数 (请注意，如果 ECG5000
 # 模型和训练参数
 INPUT_DIM = C * L  # 140
 NUM_C = K
-EPOCHS = 2000
+EPOCHS = 100
 # EPOCHS = 100
 
 LR = 0.001
@@ -311,7 +311,6 @@ def train_epoch(model, dataloader, criterion, optimizer, device):
         labels.squeeze_()
         count = count + 1
         inputs, labels = inputs.to(device), labels.to(device)
-
         optimizer.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, labels)
@@ -323,6 +322,8 @@ def train_epoch(model, dataloader, criterion, optimizer, device):
         _, predicted = torch.max(outputs.data, 1)
         total_samples += labels.size(0)
         correct_predictions += (predicted == labels).sum().item()
+        # print(f'sum of predicted: {sum(predicted)}, sum of labels: {sum(labels)}')
+
         # print(f"total samples: {total_samples}, correct predictions: {correct_predictions}, loss: {running_loss}")
 
     epoch_loss = running_loss / total_samples
@@ -593,7 +594,7 @@ def main_train_and_test_generic(
 
 if __name__ == '__main__':
     from model.baseline import TimeSeriesMLP
-    from model.CWT import generate_adaptive_scales
+    from utils import generate_adaptive_scales
     from model.DWT import DWT_MLP
     from model.learnable_wavelet import LWT
     from model.baseline import DualFeatureMLP
@@ -601,7 +602,7 @@ if __name__ == '__main__':
     from model.wavelet_cnn import WaveletLikeClassifier
     from utils import load_mortlet_pt_dataloader
     from model.wavelet_cls import WaveletCNN
-    from model.test import MRATimeSeriesClassifier
+    from model.Pure_MRA import MRATimeSeriesClassifier
     from model.adaptive_filters import WaveletClassifier
     from model.qmf_wavelet import QMFWaveletClassifier
     from model.multi_channel_DWT import MultiWaveletClassifier
@@ -708,19 +709,19 @@ if __name__ == '__main__':
         # 'use_learnable_activation' : True
     }
 
-    final_model, _ = main_train_and_test_generic(
-        model_class=MultiWaveletClassifier,
-        model_params=test_params3,
-        train_path=TRAIN_FILE,
-        test_path=TEST_FILE,
-        trainer=train_epoch,
-        custom_dataloader=(),
-        evaluator=evaluate_model,
-        num_epochs=EPOCHS,
-        learning_rate=LR,
-        batch_size=32,
-        run=run,
-    )
+    # final_model, _ = main_train_and_test_generic(
+    #     model_class=MultiWaveletClassifier,
+    #     model_params=test_params3,
+    #     train_path=TRAIN_FILE,
+    #     test_path=TEST_FILE,
+    #     trainer=train_epoch,
+    #     custom_dataloader=(),
+    #     evaluator=evaluate_model,
+    #     num_epochs=EPOCHS,
+    #     learning_rate=LR,
+    #     batch_size=32,
+    #     run=run,
+    # )
 
     # final_model = main_train_and_test_generic(
     #     model_class=QMFWaveletClassifier,
@@ -751,19 +752,20 @@ if __name__ == '__main__':
     #     run=run,
     # )
 
-    # final_model = main_train_and_test_generic(
-    #     model_class=MRATimeSeriesClassifier,
-    #     model_params=test_params,
-    #     train_path=TRAIN_FILE,
-    #     test_path=TEST_FILE,
-    #     trainer=train_epoch,
-    #     custom_dataloader=(),
-    #     evaluator=evaluate_model,
-    #     num_epochs=EPOCHS,
-    #     learning_rate=LR,
-    #     batch_size=32,
-    #     run=run,
-    # )
+    final_model = main_train_and_test_generic(
+        model_class=MRATimeSeriesClassifier,
+        model_params=test_params,
+        train_path=TRAIN_FILE,
+        test_path=TEST_FILE,
+        trainer=train_epoch,
+        custom_dataloader=(),
+        evaluator=evaluate_model,
+        num_epochs=EPOCHS,
+        learning_rate=LR,
+        batch_size=32,
+        run=run,
+        verbose=True,
+    )
 
     # final_model = main_train_and_test_generic(
     #     model_class=DWT_MLP,
