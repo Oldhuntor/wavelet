@@ -118,23 +118,3 @@ class MRATimeSeriesClassifier(nn.Module):
         output = self.classifier(features)
         return output
 
-
-# =====================================
-# Simple Dataset for Demo
-# =====================================
-class TimeSeriesDataset(Dataset):
-    def __init__(self, data, labels):
-        """
-        Args:
-            data: numpy array of shape (num_samples, seq_length)
-            labels: numpy array of shape (num_samples,)
-        """
-        self.data = torch.FloatTensor(data).unsqueeze(1)  # Add channel dim
-        self.labels = torch.LongTensor(labels)
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        return self.data[idx], self.labels[idx]
-

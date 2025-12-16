@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -112,10 +113,21 @@ def idwt_multilevel(coeffs, low_pass, high_pass, signal_len):
     return current[:signal_len]
 
 
+def generate_signal(frequencies, duration=1.0, sampling_rate=1000):
+    t = np.linspace(0, duration, int(duration * sampling_rate), endpoint=False)
+    signal = sum(np.sin(2 * np.pi * f * t) for f in frequencies)
+    return t, signal
+
+
+
 # Example usage
 if __name__ == "__main__":
-    signal = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])
+    import matplotlib.pyplot as plt
 
+    t, signal = generate_signal([5, 15, 30])
+
+    plt.plot(signal)
+    plt.show()
     # Haar wavelet filters
     low_pass = np.array([1, 1]) / np.sqrt(2)
     high_pass = np.array([1, -1]) / np.sqrt(2)
@@ -127,6 +139,11 @@ if __name__ == "__main__":
 
     print("\n=== 3-level DWT ===")
     coeffs = dwt_multilevel(signal, low_pass, high_pass, levels=3)
+    for level in range(4):
+        plt.plot(coeffs[level], label=f"Level {4-level}")
+        plt.legend()
+        plt.show()
+
     print(f"Approx (level 3): {coeffs[0]}")
     print(f"Detail (level 3): {coeffs[1]}")
     print(f"Detail (level 2): {coeffs[2]}")

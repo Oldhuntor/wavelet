@@ -3,11 +3,6 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from utils import load_morlet_pt, MorletDataset
 
-# =====================================
-# Dataset
-# =====================================
-
-
 class MultiScaleConv(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
@@ -139,73 +134,3 @@ class DualFeatureMRAClassifier(nn.Module):
 
         return self.fc(x)
 
-
-
-# =====================================
-# Main Training
-# =====================================
-def main():
-
-    # ---------- Load TRAIN ----------
-    train_path = "/Dataset/StarLightCurves/StarLightCurves_TRAIN.pt"
-    amp_train, pha_train, y_train = load_morlet_pt(train_path)
-
-    # ---------- Load TEST ----------
-    test_path = "/Dataset/StarLightCurves/StarLightCurves_TEST.pt"
-    amp_test, pha_test, y_test = load_morlet_pt(test_path)
-
-    # ---------- Build Dataset & DataLoader ----------
-    train_ds = MorletDataset(amp_train, pha_train, y_train)
-    test_ds = MorletDataset(amp_test, pha_test, y_test)
-
-    train_loader = DataLoader(train_ds, batch_size=32, shuffle=True)
-    test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
-
-    # ---------- Model ----------
-    num_classes = len(set(y_train))
-    model = DualFeatureMRAClassifier(num_classes)
-
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-
-    epochs = 20
-
-    # ---------- Training Loop ----------
-    for epoch in range(epochs):
-        model.train()
-        total_loss = 0
-
-        for amp, pha, y in train_loader:
-            optimizer.zero_grad()
-
-            pred = model(amp, pha)
-            loss = criterion(pred, y)
-
-            loss.backward()
-            optimizer.step()
-
-            total_loss += loss.item()
-
-        # ---------- Evaluate ----------
-        model.eval()
-        correct = 0
-        total = 0
-
-        with torch.no_grad():
-            for amp, pha, y in test_loader:
-                pred = model(amp, pha)
-                _, predicted = pred.max(1)
-                correct += (predicted == y).sum().item()
-                total += y.size(0)
-
-        acc = correct / total
-
-        print(f"Epoch {epoch+1}/{epochs} | Loss={total_loss:.4f} | Test Acc={acc*100:.2f}%")
-
-    # save
-    torch.save(model.state_dict(), "mra_classifier.pth")
-    print("Model saved to mra_classifier.pth")
-
-
-if __name__ == "__main__":
-    main()
