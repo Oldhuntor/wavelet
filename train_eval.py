@@ -11,9 +11,11 @@ import neptune
 import os
 from utils import get_data_path
 from utils import DATA_PATH, DUAL_FEATURES_MODELS, DATA_NAMES, DATA_INFO
+from sklearn.ensemble import ExtraTreesClassifier
 
-DATA_NAME = DATA_NAMES[2]
-MARGIN = 0.5
+
+DATA_NAME = DATA_NAMES[0]
+MARGIN = 0.2
 DATA_TYPE = 'arff'  # pt, npz or arff
 
 TRAIN_FILE, TEST_FILE = get_data_path(DATA_PATH, DATA_NAME, DATA_TYPE)
@@ -26,7 +28,7 @@ K = DATA_INFO[DATA_NAME]['NUM_CLASSES']  # 类别数 (请注意，如果 ECG5000
 # 模型和训练参数
 INPUT_DIM = C * L  # 140
 NUM_C = K
-EPOCHS = 100
+EPOCHS = 500
 # EPOCHS = 100
 
 LR = 0.001
@@ -612,7 +614,7 @@ if __name__ == '__main__':
     run = neptune.init_run(
         project="casestudy",
         api_token=os.getenv("NEPTUNE_API_TOKEN"),
-        # mode="debug"
+        mode="debug"
     )
 
     train_ds, test_ds = load_mortlet_pt_dataloader(DATA_NAME)
@@ -637,8 +639,8 @@ if __name__ == '__main__':
 
     DWT_params = {
     'input_length' : L,
-    'levels' : 3,
-    'hidden_dim' : 64,
+    'levels' : 5,
+    'hidden_dim' : 8,
     'output_dim' : NUM_C,
     }
 
@@ -694,7 +696,7 @@ if __name__ == '__main__':
         'hidden_dim' : 64,
         'init_type' : 'random',
         'use_frequency_constraint' : True,
-        'use_learnable_activation' : True
+        'use_learnable_activation' : False
     }
 
     test_params3 = {
@@ -750,11 +752,27 @@ if __name__ == '__main__':
     #     learning_rate=LR,
     #     batch_size=32,
     #     run=run,
+    #     verbose=True,
+    # )
+
+    # final_model = main_train_and_test_generic(
+    #     model_class=MRATimeSeriesClassifier,
+    #     model_params=test_params,
+    #     train_path=TRAIN_FILE,
+    #     test_path=TEST_FILE,
+    #     trainer=train_epoch,
+    #     custom_dataloader=(),
+    #     evaluator=evaluate_model,
+    #     num_epochs=EPOCHS,
+    #     learning_rate=LR,
+    #     batch_size=32,
+    #     run=run,
+    #     verbose=True,
     # )
 
     final_model = main_train_and_test_generic(
-        model_class=MRATimeSeriesClassifier,
-        model_params=test_params,
+        model_class=DWT_MLP,
+        model_params=DWT_params,
         train_path=TRAIN_FILE,
         test_path=TEST_FILE,
         trainer=train_epoch,
@@ -766,20 +784,6 @@ if __name__ == '__main__':
         run=run,
         verbose=True,
     )
-
-    # final_model = main_train_and_test_generic(
-    #     model_class=DWT_MLP,
-    #     model_params=DWT_params,
-    #     train_path=TRAIN_FILE,
-    #     test_path=TEST_FILE,
-    #     trainer=train_epoch,
-    #     custom_dataloader=(),
-    #     evaluator=evaluate_model,
-    #     num_epochs=EPOCHS,
-    #     learning_rate=LR,
-    #     batch_size=32,
-    #     run=run,
-    # )
 
     # final_model = main_train_and_test_generic(
     #     model_class=LWT,
@@ -840,6 +844,8 @@ if __name__ == '__main__':
     #     run=run,
     # )
     #
+
+
     # final_model = main_train_and_test_generic(
     #     model_class=WaveletCNN,
     #     model_params=WaveletCNN2_params,
@@ -851,6 +857,7 @@ if __name__ == '__main__':
     #     learning_rate=LR,
     #     batch_size=32,
     #     run=run,
+    #     verbose=True,
     # )
 
 

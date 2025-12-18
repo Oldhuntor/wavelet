@@ -81,3 +81,8 @@ temp/
 
 *.pth
 
+*.onnx
+
+.runs/
+
+*.jpg

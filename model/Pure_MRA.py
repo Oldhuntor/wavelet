@@ -118,3 +118,44 @@ class MRATimeSeriesClassifier(nn.Module):
         output = self.classifier(features)
         return output
 
+if __name__ == '__main__':
+    #
+    # from torchviz import make_dot
+    # import torch
+    #
+    # # 创建模型示例
+    # model = MRATimeSeriesClassifier(input_channels=1, num_classes=2)
+    #
+    # # 创建虚拟输入
+    # batch_size = 2
+    # seq_length = 100
+    # x = torch.randn(batch_size, 1, seq_length)
+    #
+    # # 生成计算图
+    # y = model(x)
+    # dot = make_dot(y, params=dict(model.named_parameters()))
+    # dot.render('mra_classifier', format='png', cleanup=True)
+    # print("计算图已保存为 mra_classifier.png")
+    import torch
+    import onnx
+    import os
+
+    # 创建模型并导出为ONNX格式
+    model = MRATimeSeriesClassifier(input_channels=1, num_classes=10)
+    batch_size = 1
+    seq_length = 100
+    x = torch.randn(batch_size, 1, seq_length)
+
+    # 导出ONNX文件
+    torch.onnx.export(
+        model,
+        x,
+        "mra_classifier.onnx",
+        input_names=['input'],
+        output_names=['output'],
+        dynamic_axes={'input': {0: 'batch_size'}},
+        opset_version=11
+    )
+
+    print("ONNX文件已保存为 mra_classifier.onnx")
+    print("请访问 https://netron.app/ 上传此文件进行可视化")

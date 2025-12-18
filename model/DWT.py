@@ -19,19 +19,19 @@ def dwt_haar(x, levels=3):
     参数 levels 控制分解层数。
     返回所有层的近似和细节系数组合后的特征张量。
     """
-    A_current = x.clone()
+    D_current = x.clone()
     features = []
 
     for level in range(levels):
-        A_next = F.conv1d(A_current, h.to(x.device), stride=2)
-        D_next = F.conv1d(A_current, g.to(x.device), stride=2)
+        A_next = F.conv1d(D_current, h.to(x.device), stride=2)
+        D_next = F.conv1d(D_current, g.to(x.device), stride=2)
 
         # 保存当前层的特征（可以拼接或展平）
-        features.append(D_next)
-        A_current = A_next
+        features.append(A_next)
+        D_current = D_next
 
     # 最后一层的低频部分也加入特征中
-    features.append(A_current)
+    features.append(D_current)
 
     # 拼接所有尺度的特征为一个向量
     feats_flattened = [f.flatten(start_dim=1) for f in features]

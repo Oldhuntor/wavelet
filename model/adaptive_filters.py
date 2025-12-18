@@ -261,82 +261,50 @@ class WaveletClassifier(nn.Module):
         return recon_loss
 
 
-# Training example
+# 最简导出脚本
 if __name__ == "__main__":
-    # Hyperparameters
-    batch_size = 32
-    signal_length = 128
-    num_classes = 5
-    levels = 3
+    import torch
 
-    # Dummy data
-    signals = torch.randn(batch_size, signal_length)
-    labels = torch.randint(0, num_classes, (batch_size,))
+    FILTER_LENGTH = 8
+    LEVELS = 3
+    SIGNAL_LENGTH = 100
+    NUM_CLASSES = 2
 
-    print("=" * 60)
-    print("Test 1: WITHOUT Soft Threshold")
-    print("=" * 60)
-    model_no_act = WaveletClassifier(8, levels, signal_length, num_classes,
-                                     init_type='db4', use_frequency_constraint=True,
-                                     use_learnable_activation=False)
+    # 创建并导出模型
+    model = WaveletClassifier(
+        filter_length=FILTER_LENGTH,
+        levels=LEVELS,
+        signal_length=SIGNAL_LENGTH,
+        num_classes=NUM_CLASSES,
+        init_type='random',
+        use_frequency_constraint=False,
+        use_learnable_activation=True
+    )
+    model.eval()
 
-    logits, coeffs = model_no_act(signals)
-    classification_loss = F.cross_entropy(logits, labels)
-    reconstruction_loss = model_no_act.compute_reconstruction_loss(signals, coeffs)
-    total_loss = classification_loss + 0.1 * reconstruction_loss
+    # 创建示例输入
+    x = torch.randn(1, SIGNAL_LENGTH)
 
-    print(f"Classification loss: {classification_loss.item():.4f}")
-    print(f"Reconstruction loss: {reconstruction_loss.item():.4f}")
-    print(f"Total loss: {total_loss.item():.4f}")
+    # 导出
+    torch.onnx.export(
+        model,
+        x,
+        "wavelet_model_complete.onnx",
+        input_names=['input'],
+        output_names=['logits', 'coeffs'],
+        dynamic_axes={
+            'input': {0: 'batch_size'},
+            'logits': {0: 'batch_size'},
+        },
+        opset_version=13,
+        verbose=False
+    )
 
-    print("\n" + "=" * 60)
-    print("Test 2: WITH Soft Learnable Threshold")
-    print("=" * 60)
-    model_with_act = WaveletClassifier(8, levels, signal_length, num_classes,
-                                       init_type='db4', use_frequency_constraint=True,
-                                       use_learnable_activation=True)
+    print("✅ 模型已导出到 wavelet_model_complete.onnx")
+    print("\n📁 在Netron中查看步骤:")
+    print("1. 访问 https://netron.app/")
+    print("2. 点击 'Open Model'")
+    print("3. 选择 wavelet_model_complete.onnx")
+    print("4. 探索模型结构!")
 
-    print("Initial threshold params (threshold, sharpness) per level:")
-    for i, params in enumerate(model_with_act.wavelet.threshold_params):
-        print(f"  Level {i + 1}: threshold={params[0].item():.3f}, sharpness={params[1].item():.3f}")
 
-    logits, coeffs = model_with_act(signals)
-    classification_loss = F.cross_entropy(logits, labels)
-    reconstruction_loss = model_with_act.compute_reconstruction_loss(signals, coeffs)
-    total_loss = classification_loss + 0.1 * reconstruction_loss
-
-    print(f"\nClassification loss: {classification_loss.item():.4f}")
-    print(f"Reconstruction loss: {reconstruction_loss.item():.4f}")
-    print(f"Total loss: {total_loss.item():.4f}")
-
-    print("\n" + "=" * 60)
-    print("Test 3: Training with Soft Threshold (10 steps)")
-    print("=" * 60)
-
-    model = WaveletClassifier(8, levels, signal_length, num_classes,
-                              init_type='random', use_frequency_constraint=True,
-                              use_learnable_activation=True)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-
-    print("Training...")
-    for step in range(10):
-        optimizer.zero_grad()
-        logits, coeffs = model(signals)
-        classification_loss = F.cross_entropy(logits, labels)
-        reconstruction_loss = model.compute_reconstruction_loss(signals, coeffs)
-        total_loss = classification_loss + 0.1 * reconstruction_loss
-        total_loss.backward()
-        optimizer.step()
-
-        if step % 3 == 0:
-            print(f"\nStep {step}: Loss={total_loss.item():.4f}")
-            for i, params in enumerate(model.wavelet.threshold_params):
-                print(f"  Level {i + 1}: threshold={params[0].item():.3f}, sharpness={params[1].item():.3f}")
-
-    print("\n" + "=" * 60)
-    print("Soft threshold explanation:")
-    print("- threshold: values below this are smoothly suppressed")
-    print("- sharpness: controls how abrupt the transition is")
-    print("- Higher sharpness → more like hard threshold")
-    print("- Lower sharpness → more gradual suppression")
-    print("=" * 60)

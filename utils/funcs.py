@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from typing import Optional, Tuple
 from utils.constant import *
 from utils.objects import MorletDataset
+import matplotlib.pyplot as plt
 
 def extract_cwt_features(x_single, scales, fs, trim_ratio):
     # ... (保持不变，用于单样本 CWT 计算)
@@ -81,4 +82,31 @@ def load_mortlet_pt_dataloader(data_name):
     test_ds = MorletDataset(amp_test, pha_test, y_test)
     return train_ds, test_ds
 
+
+def get_daubechies_coefficients(filter_length: int) -> tuple:
+    """
+    Generate Daubechies wavelet coefficients using PyWavelets.
+
+    Args:
+        filter_length: Length of the filter (must be even, typically 2, 4, 6, 8, ...)
+                      This determines the Daubechies order: db1, db2, db3, etc.
+
+    Returns:
+        h0: Low-pass filter coefficients (scaling function / father wavelet)
+        h1: High-pass filter coefficients (mother wavelet)
+    """
+    if filter_length % 2 != 0:
+        raise ValueError("Filter length must be even")
+
+    db_order = filter_length // 2
+    wavelet_name = f'db{db_order}'
+
+    # Get wavelet object
+    wavelet = pywt.Wavelet(wavelet_name)
+
+    # Get decomposition filters: dec_lo (low-pass), dec_hi (high-pass)
+    h0 = np.array(wavelet.dec_lo, dtype=float)
+    h1 = np.array(wavelet.dec_hi, dtype=float)
+
+    return h0, h1
 
